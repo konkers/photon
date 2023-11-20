@@ -35,6 +35,8 @@
 #define TIMEOUT_TIME_PER_TENTH_MM 15
 // after driving backwards, how long do we peel to take up any potential slack in the film
 #define BACKWARDS_FEED_FILM_SLACK_REMOVAL_TIME 200
+// after driving backwards, how long do we peel to take up any potential slack in the film
+#define FORWARDS_FEED_FILM_SLACK_REMOVAL_TIME 750
 
 // Unit Tests Fail Because This Isn't Defined In ArduinoFake for some reason
 #ifndef INPUT_ANALOG
@@ -90,7 +92,8 @@ uint16_t PhotonFeeder::calculateExpectedFeedTime(uint8_t distance, bool forward)
         // - peel forward time
         // - peel backoff time
         // - expected time to drive forward assuming one attempt
-        return (distance * PEEL_TIME_PER_TENTH_MM) + PEEL_BACKOFF_TIME + (distance * TIMEOUT_TIME_PER_TENTH_MM) + 10;
+        return (distance * PEEL_TIME_PER_TENTH_MM) + PEEL_BACKOFF_TIME + (distance * TIMEOUT_TIME_PER_TENTH_MM) +
+        FORWARDS_FEED_FILM_SLACK_REMOVAL_TIME + 10;
     }
     else {
         // we're calculating expected feed time of an _optimal_ backward feed command. this includes:
@@ -185,6 +188,17 @@ void PhotonFeeder::peel(bool forward) {
     else{
         analogWrite(_peel1_pin, 0);
         analogWrite(_peel2_pin, 255);
+    }
+}
+
+void PhotonFeeder::peelValue(bool forward, uint8_t value) {
+    if(forward){
+        analogWrite(_peel1_pin, value);
+        analogWrite(_peel2_pin, 0);
+    }
+    else{
+        analogWrite(_peel1_pin, 0);
+        analogWrite(_peel2_pin, value);
     }
 }
 
@@ -390,6 +404,12 @@ bool PhotonFeeder::moveForwardSequence(uint16_t tenths_mm) {
                 resetEncoderPosition(current_tick - goal_tick_precise);
                 setMmPosition(0);
             }
+
+            // Run the peel motor at a lower power to re-tensions the cover tape.
+            peelValue(true, 150);
+            delay(FORWARDS_FEED_FILM_SLACK_REMOVAL_TIME);
+            brakePeel();
+
             return true;
         }
 

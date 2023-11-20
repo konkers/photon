@@ -36,6 +36,7 @@ class PhotonFeeder {
         
         // Async Functions
         void peel(bool forward);
+        void peelValue(bool forward, uint8_t value);
         void drive(bool forward);
         void driveValue(bool forward, uint8_t value);
         void brakePeel();
